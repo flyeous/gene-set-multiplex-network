@@ -1,6 +1,7 @@
 import anndata
 import contextlib
 import copy
+import gseapy as gp
 import itertools
 import numpy as np
 import multiprocessing
@@ -283,45 +284,55 @@ def abridge_GO(GO, sep = ' ', cut = 15):
     return GO_abridge
 
 def annotation_table(index:dict, df_vis, num_layer = 6, sep = ' ', nb_lst = None,  position_only = False, ID_only = False, No_ID = False, first_col = False):
-#     for item in list(index.keys()):
+    
+    keys = list(index.keys())
+    values = list(index.values())
+#     ### index.keys -> the parent gene set at [0], its children gene sets
+#     for item in keys:
 #         print('The keys contain ' + item)
     gs_names = df_vis['Description']
+    ### If need printing gene sets' ID
     if not No_ID:
         gs_ID = df_vis['ID']
     marker = []
     index_lst = []
     ### add a Jaccard layer
     for i in range(num_layer):
-        index_sub_lst = []
-        marker_sub = []
-        for j in range(len(index)):
-            index_sub_lst.append(list(index.values())[j])
-            label = gs_names[index_sub_lst[-1]] 
+        temp_index = []
+        temp_q = []
+        for j in range(len(keys)):
+            temp_index.append(values[j])
+            temp_name = gs_names[temp_index[-1]] 
+            temp_ID = gs_ID[temp_index[-1]]
             if position_only:
+                ### nb_lst -> target gene sets 
                 if nb_lst is not None:
                     if j in nb_lst:
-                        marker_sub.append(gs_ID[index_sub_lst[-1]])
+                        temp_q.append(temp_ID)
                     else:
-                        marker_sub.append(' ')
+                        temp_q.append(' ')
                 else:
-                    marker_sub.append(' ')
+                    temp_q.append(' ')
+            ### only print ID
             elif ID_only:
-                marker_sub.append(gs_ID[index_sub_lst[-1]])
+                temp_q.append(temp_ID)
+            ### print ID + name
             elif not No_ID:
-                marker_sub.append(gs_ID[index_sub_lst[-1]] + ":\n" + abridge_GO(label, sep = sep))
+                temp_q.append(temp_ID + ":\n" + abridge_GO(temp_name, sep = sep))
+            ### print name only
             else:
-                marker_sub.append(abridge_GO(label, sep = sep))
-        index_lst.append(index_sub_lst)
-        marker.append(marker_sub)
+                temp_q.append(abridge_GO(temp_name, sep = sep))
+        index_lst.append(temp_index)
+        marker.append(temp_q)
     loc = []
     for i in range(num_layer):
-        loc_sub = []
+        temp_loc = []
         for j in range(len(index)):
-            if  not first_col:
-                loc_sub.append(df_vis.iloc[index_lst[i][j],[i*2+1,i*2+2]])
+            if not first_col:
+                temp_loc.append(df_vis.iloc[index_lst[i][j],[i*2+1,i*2+2]])
             else:
-                loc_sub.append(df_vis.iloc[index_lst[i][j],[i*2,i*2+1]])
-        loc.append(loc_sub)
+                temp_loc.append(df_vis.iloc[index_lst[i][j],[i*2,i*2+1]])
+        loc.append(temp_loc)
     df_annotate = pd.DataFrame(dict(marker = marker, loc = loc))
     return df_annotate
     
